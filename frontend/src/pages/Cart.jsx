@@ -9,19 +9,27 @@ const Cart = () => {
   const navigate = useNavigate();
   const { items, loading, error } = useSelector((state) => state.cart);
   const [formaPago, setFormaPago] = useState(1);
+  const [loadingItems, setLoadingItems] = useState({});
 
   useEffect(() => {
     dispatch(fetchCarrito());
   }, [dispatch]);
 
-  const handleQuantityChange = (item, newCantidad) => {
-    if (newCantidad < 1) return;
-    if (newCantidad > item.Producto.stock) {
-      toast.error(`Stock máximo: ${item.Producto.stock}`);
-      return;
-    }
-    dispatch(actualizarCantidad({ id_producto: item.id_producto, cantidad: newCantidad }));
-  };
+  const handleQuantityChange = async (item, newCantidad) => {
+  if (newCantidad < 1) return;
+  if (newCantidad > item.Producto.stock) {
+    toast.error(`Stock máximo: ${item.Producto.stock}`);
+    return;
+  }
+  setLoadingItems(prev => ({ ...prev, [item.id_producto]: true }));
+  try {
+    await dispatch(actualizarCantidad({ id_producto: item.id_producto, cantidad: newCantidad })).unwrap();
+  } catch (err) {
+    toast.error(err);
+  } finally {
+    setLoadingItems(prev => ({ ...prev, [item.id_producto]: false }));
+  }
+};
 
   const handleEliminar = (id) => {
     if (window.confirm('¿Eliminar producto del carrito?')) {
@@ -74,9 +82,9 @@ const Cart = () => {
                       <div className="text-warning small">Stock disponible: {item.Producto?.stock}</div>
                     </div>
                     <div className="d-flex align-items-center gap-2">
-                      <button className="btn btn-sm btn-outline-secondary" onClick={() => handleQuantityChange(item, item.cantidad - 1)} disabled={item.cantidad <= 1}>-</button>
+                      <button className="btn btn-sm btn-outline-secondary" onClick={() => handleQuantityChange(item, item.cantidad - 1)} disabled={item.cantidad <= 1 || loadingItems[item.id_producto]}>-</button>
                       <span className="fw-bold" style={{ width: '40px', textAlign: 'center' }}>{item.cantidad}</span>
-                      <button className="btn btn-sm btn-outline-secondary" onClick={() => handleQuantityChange(item, item.cantidad + 1)} disabled={item.cantidad >= item.Producto?.stock}>+</button>
+                      <button className="btn btn-sm btn-outline-secondary" onClick={() => handleQuantityChange(item, item.cantidad + 1)} disabled={item.cantidad >= item.Producto?.stock || loadingItems[item.id_producto]}>+</button>
                     </div>
                     <div className="fw-bold text-success" style={{ width: '100px' }}>${(item.cantidad * item.Producto?.precio).toLocaleString()}</div>
                     <button className="btn btn-sm btn-danger" onClick={() => handleEliminar(item.id_producto)}>🗑️</button>

@@ -14,7 +14,7 @@ const Usuario = sequelize.define('Usuario', {
   },
   apellido: { 
     type: DataTypes.STRING(100), 
-    allowNull: false 
+    allowNull: true 
   },
   nro_telefono: { 
     type: DataTypes.STRING(20), 

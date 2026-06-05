@@ -6,13 +6,14 @@ import { ProductSkeleton } from "./ProductSkeleton";
 
 export const ProductList = () => {
   const dispatch = useDispatch();
-  const { products, loading, error } = useSelector((state) => state.products);
+  const { searchTerm, selectedCategoria, loading, products, error } =
+    useSelector((state) => state.products);
 
   useEffect(() => {
-    if (loading === "idle") {
-      dispatch(fetchProducts());
-    }
-  }, [dispatch, loading]);
+    dispatch(
+      fetchProducts({ search: searchTerm, categoria: selectedCategoria }),
+    );
+  }, [dispatch, searchTerm, selectedCategoria]);
 
   const renderContent = () => {
     if (loading === "loading") {
@@ -53,13 +54,15 @@ export const ProductList = () => {
 
   return (
     <div className="container py-5">
-      <h2 className="text-center text-white mb-4 fw-bold">
-        Nuestro Catálogo <span className="text-cyan">de Componentes</span>
-      </h2>
-      <p className="text-center text-secondary mb-5 lead">
-        Encuentra lo último en hardware y periféricos.
-      </p>
+  <div className="row">
+    <div className="col-md-3">
+      <CategoryFilter />
+    </div>
+    <div className="col-md-9">
+      <h2 className="text-white mb-4 fw-bold">Nuestro Catálogo</h2>
       {renderContent()}
     </div>
+  </div>
+</div>
   );
 };

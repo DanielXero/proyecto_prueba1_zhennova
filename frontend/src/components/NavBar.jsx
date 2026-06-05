@@ -1,11 +1,16 @@
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
+
 import { NavLink, Link } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../store/usersSlice";
+import { fetchProducts, setSearchTerm } from "../store/productsSlice";
 
 export const NavBar = () => {
   const { user, isAuth } = useSelector((state) => state.users);
   const { items } = useSelector((state) => state.cart);
+  const { searchTerm } = useSelector((state) => state.products);
+  const [inputValue, setInputValue] = useState(searchTerm);
+  const debounceRef = useRef(null);
 
   const dispatch = useDispatch();
 
@@ -15,6 +20,22 @@ export const NavBar = () => {
   const cantidadTotal = items
     ? items.reduce((total, item) => total + item.cantidad, 0)
     : 0;
+
+  useEffect(() => {
+    // Debounce: esperar 500ms después de que el usuario deje de escribir
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      if (inputValue !== searchTerm) {
+        dispatch(setSearchTerm(inputValue));
+        dispatch(fetchProducts({ search: inputValue }));
+      }
+    }, 500);
+    return () => clearTimeout(debounceRef.current);
+  }, [inputValue, dispatch, searchTerm]);
+
+  const handleSearchChange = (e) => {
+    setInputValue(e.target.value);
+  };
 
   return (
     <nav className="navbar navbar-expand-lg navbar-dark bg-dark border-bottom border-primary">
@@ -49,7 +70,6 @@ export const NavBar = () => {
               <NavLink className="nav-link fw-semibold mx-2" to="/productos">
                 Productos
               </NavLink>{" "}
-              {/* 👈 RUTA CORREGIDA */}
             </li>
 
             <li className="nav-item">
@@ -71,6 +91,8 @@ export const NavBar = () => {
                   type="search"
                   className="form-control bg-dark text-white border-end-0"
                   placeholder="Buscar productos..."
+                  value={inputValue}
+                  onChange={handleSearchChange}
                   style={{ minWidth: "250px" }}
                 />
                 <button
