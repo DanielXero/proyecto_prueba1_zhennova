@@ -1,0 +1,53 @@
+.App {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  flex: 1;
+}
+
+/* Mejoras de espaciado y layout */
+.container-fluid {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+/* Asegurar que las imágenes sean responsivas */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+.product-card-hover {
+  transition: var(--transition);
+  border-radius: var(--border-radius-card);
+  background: var(--dark-card);
+  overflow: hidden;
+}
+.product-card-hover:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-md);
+}
+.card-img-top {
+  transition: transform 0.3s ease;
+}
+.product-card-hover:hover .card-img-top {
+  transform: scale(1.02);
+}
+
+/* Mejoras de legibilidad */
+.lead {
+  font-size: 1.2rem;
+  font-weight: 300;
+}
+
+/* Efectos de transición suaves */
+a,
+button,
+.card,
+.btn,
+input {
+  transition: all 0.3s ease;
+}
