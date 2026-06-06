@@ -1,5 +1,5 @@
 const { Pedido, DetallePedido, Producto, UsuarioProducto } = require('../models/associations');
-const sequelize = require('../config/database');
+const { sequelize } = require('../config/database');
 const { PagoEfectivo, PagoTarjeta, PagoTransferencia } = require('../strategies/pagoStrategy');
 
 const realizarPedido = async (req, res) => {
@@ -42,7 +42,7 @@ const realizarPedido = async (req, res) => {
         // 4. Registrar el Pedido
         const pedido = await Pedido.create({
             total: monto_total,
-            estado: 'Pendiente',
+            estado: 'pendiente',
             id_usuario,
             id_forma_pago
         }, { transaction: t });

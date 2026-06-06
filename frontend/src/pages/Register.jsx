@@ -1,8 +1,9 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useDispatch, useSelector } from "react-redux";
 import { registerUser, clearError } from "../store/usersSlice";
 import { useNavigate, Link } from "react-router-dom";
+import { toast } from "react-toastify";
 import {
   BiUserPlus,
   BiUser,
@@ -15,13 +16,28 @@ const Register = () => {
   const {
     register,
     handleSubmit,
+    watch,
+    setError,
+    clearErrors,
     formState: { errors },
   } = useForm();
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { loading, error, isAuth, errorDetails } = useSelector(
-    (state) => state.users,
+    (state) => state.users
   );
+
+  const [passwordStrength, setPasswordStrength] = useState(0);
+  const password = watch("password", "");
+
+  const checkStrength = (pass) => {
+    let score = 0;
+    if (pass.length >= 6) score++;
+    if (/[A-Z]/.test(pass)) score++;
+    if (/[0-9]/.test(pass)) score++;
+    if (/[@$!%*?&]/.test(pass)) score++;
+    setPasswordStrength(score);
+  };
 
   useEffect(() => {
     if (isAuth) navigate("/");
@@ -30,10 +46,29 @@ const Register = () => {
     };
   }, [isAuth, navigate, dispatch]);
 
+  // Mapear errores del backend a campos específicos
+  useEffect(() => {
+    if (errorDetails && Array.isArray(errorDetails)) {
+      // Limpiar errores anteriores del backend para no duplicar
+      clearErrors();
+      errorDetails.forEach((errMsg) => {
+        if (errMsg.includes("email")) setError("email", { type: "backend", message: errMsg });
+        else if (errMsg.includes("nombre de usuario")) setError("nombre_usuario", { type: "backend", message: errMsg });
+        else if (errMsg.includes("contraseña")) setError("password", { type: "backend", message: errMsg });
+        else if (errMsg.includes("nombre") && !errMsg.includes("usuario")) setError("nombre", { type: "backend", message: errMsg });
+        else {
+          // Si no se puede mapear, se muestra en un alert general (solo por si acaso)
+          toast.error(errMsg);
+        }
+      });
+    }
+  }, [errorDetails, setError, clearErrors]);
+
   const onSubmit = async (data) => {
-    const result = await dispatch(registerUser(data));
+    const { confirmPassword, ...userData } = data;
+    const result = await dispatch(registerUser(userData));
     if (registerUser.fulfilled.match(result)) {
-      alert("¡Cuenta creada! Por favor inicia sesión.");
+      toast.success("¡Cuenta creada! Por favor inicia sesión.");
       navigate("/login");
     }
   };
@@ -54,152 +89,126 @@ const Register = () => {
           <p className="text-secondary small">Únete a ZhenNova</p>
         </div>
 
-        {error && (
-          <div
-            className="alert alert-danger alert-dismissible fade show py-2"
-            role="alert"
-          >
+        {/* Solo errores generales no mapeados */}
+        {error && !errorDetails && (
+          <div className="alert alert-danger alert-dismissible fade show py-2" role="alert">
             <strong>{error}</strong>
-            {errorDetails && errorDetails.length > 0 && (
-              <ul className="mb-0 mt-2">
-                {errorDetails.map((err, idx) => (
-                  <li key={idx}>{err}</li>
-                ))}
-              </ul>
-            )}
-            <button
-              type="button"
-              className="btn-close"
-              onClick={() => dispatch(clearError())}
-            ></button>
+            <button type="button" className="btn-close" onClick={() => dispatch(clearError())}></button>
           </div>
         )}
 
         <form onSubmit={handleSubmit(onSubmit)}>
           <div className="mb-3">
-            <label className="form-label text-secondary small">
-              Nombre
-            </label>
+            <label className="form-label text-secondary small">Nombre</label>
             <div className="input-group">
-              <span className="input-group-text bg-dark border-secondary">
-                <BiIdCard />
-              </span>
-              {/* CORREGIDO: "name" a "nombre" */}
+              <span className="input-group-text bg-dark border-secondary"><BiIdCard /></span>
               <input
                 type="text"
-                className="form-control bg-dark text-white"
+                className={`form-control bg-dark text-white ${errors.nombre ? "border-danger" : "border-secondary"}`}
                 placeholder="Juan"
                 {...register("nombre", { required: "Nombre obligatorio" })}
               />
             </div>
-            {errors.nombre && (
-              <span className="text-danger small">{errors.nombre.message}</span>
-            )}
+            {errors.nombre && <span className="text-danger small">{errors.nombre.message}</span>}
           </div>
+
           <div className="mb-3">
             <label className="form-label text-secondary small">Apellido</label>
             <div className="input-group">
-              <span className="input-group-text bg-dark border-secondary">
-                <BiIdCard />
-              </span>
-              {/* CORREGIDO: "surname" a "apellido" */}
+              <span className="input-group-text bg-dark border-secondary"><BiIdCard /></span>
               <input
                 type="text"
-                className="form-control bg-dark text-white"
+                className="form-control bg-dark text-white border-secondary"
                 placeholder="Perez"
                 {...register("apellido")}
               />
             </div>
           </div>
+
           <div className="mb-3">
             <label className="form-label text-secondary small">Usuario</label>
             <div className="input-group">
-              <span className="input-group-text bg-dark border-secondary">
-                <BiUser />
-              </span>
-              {/* CORREGIDO: "username" a "nombre_usuario" */}
+              <span className="input-group-text bg-dark border-secondary"><BiUser /></span>
               <input
                 type="text"
-                className="form-control bg-dark text-white"
+                className={`form-control bg-dark text-white ${errors.nombre_usuario ? "border-danger" : "border-secondary"}`}
                 placeholder="juanperez123"
-                {...register("nombre_usuario", {
-                  required: "Usuario obligatorio",
-                })}
+                {...register("nombre_usuario", { required: "Usuario obligatorio" })}
               />
             </div>
-            {errors.nombre_usuario && (
-              <span className="text-danger small">
-                {errors.nombre_usuario.message}
-              </span>
-            )}
+            {errors.nombre_usuario && <span className="text-danger small">{errors.nombre_usuario.message}</span>}
           </div>
+
           <div className="mb-3">
             <label className="form-label text-secondary small">Email</label>
             <div className="input-group">
-              <span className="input-group-text bg-dark border-secondary">
-                <BiEnvelope />
-              </span>
+              <span className="input-group-text bg-dark border-secondary"><BiEnvelope /></span>
               <input
                 type="email"
-                className="form-control bg-dark text-white"
+                className={`form-control bg-dark text-white ${errors.email ? "border-danger" : "border-secondary"}`}
                 placeholder="ejemplo@correo.com"
                 {...register("email", {
                   required: "Email obligatorio",
-                  pattern: {
-                    value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                    message: "Email inválido",
-                  },
+                  pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: "Email inválido" },
                 })}
               />
             </div>
-            {errors.email && (
-              <span className="text-danger small">{errors.email.message}</span>
-            )}
+            {errors.email && <span className="text-danger small">{errors.email.message}</span>}
           </div>
-          <div className="mb-4">
-            <label className="form-label text-secondary small">
-              Contraseña
-            </label>
+
+          <div className="mb-3">
+            <label className="form-label text-secondary small">Contraseña</label>
             <div className="input-group">
-              <span className="input-group-text bg-dark border-secondary">
-                <BiLockAlt />
-              </span>
-              {/* CORREGIDO: Se agregó el pattern al frontend para avisar al usuario */}
+              <span className="input-group-text bg-dark border-secondary"><BiLockAlt /></span>
               <input
                 type="password"
-                className="form-control bg-dark text-white"
+                className={`form-control bg-dark text-white ${errors.password ? "border-danger" : "border-secondary"}`}
                 placeholder="••••••••"
                 {...register("password", {
                   required: "Contraseña obligatoria",
                   pattern: {
-                    value:
-                      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{6,}$/,
+                    value: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{6,}$/,
                     message: "Debe incluir mayúscula, minúscula y un número",
                   },
                 })}
+                onChange={(e) => checkStrength(e.target.value)}
               />
             </div>
-            {errors.password && (
-              <span className="text-danger small">
-                {errors.password.message}
-              </span>
-            )}
+            {errors.password && <span className="text-danger small">{errors.password.message}</span>}
+            <div className="mt-1">
+              <div className="progress" style={{ height: "4px" }}>
+                <div className={`progress-bar ${passwordStrength >= 3 ? "bg-success" : passwordStrength >= 2 ? "bg-warning" : "bg-danger"}`} style={{ width: `${(passwordStrength / 4) * 100}%` }}></div>
+              </div>
+              <small className="text-secondary">
+                Contraseña: {passwordStrength === 0 ? "Muy débil" : passwordStrength === 1 ? "Débil" : passwordStrength === 2 ? "Media" : "Fuerte"}
+              </small>
+            </div>
           </div>
-          <button
-            type="submit"
-            className="btn btn-info w-100 fw-bold text-dark py-2"
-            disabled={loading === "loading"}
-          >
+
+          <div className="mb-4">
+            <label className="form-label text-secondary small">Confirmar contraseña</label>
+            <div className="input-group">
+              <span className="input-group-text bg-dark border-secondary"><BiLockAlt /></span>
+              <input
+                type="password"
+                className={`form-control bg-dark text-white ${errors.confirmPassword ? "border-danger" : "border-secondary"}`}
+                placeholder="••••••••"
+                {...register("confirmPassword", {
+                  required: "Confirma tu contraseña",
+                  validate: (value) => value === password || "Las contraseñas no coinciden",
+                })}
+              />
+            </div>
+            {errors.confirmPassword && <span className="text-danger small">{errors.confirmPassword.message}</span>}
+          </div>
+
+          <button type="submit" className="btn btn-info w-100 fw-bold text-dark py-2" disabled={loading === "loading"}>
             {loading === "loading" ? "Registrando..." : "Registrarse"}
           </button>
         </form>
+
         <div className="text-center mt-3">
-          <p className="text-secondary small">
-            ¿Ya tienes cuenta?{" "}
-            <Link to="/login" className="text-info">
-              Inicia sesión
-            </Link>
-          </p>
+          <p className="text-secondary small">¿Ya tienes cuenta? <Link to="/login" className="text-info">Inicia sesión</Link></p>
         </div>
       </div>
     </div>

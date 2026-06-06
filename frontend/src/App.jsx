@@ -7,6 +7,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import { ProductList } from "./components/ProductList";
 import { Routes, Route } from "react-router-dom";
 import Cart from "./pages/Cart";
+import ThankYou from './pages/ThankYou';
 import "./App.css";
 
 function App() {
@@ -19,7 +20,7 @@ function App() {
           <Route path="/productos" element={<ProductList />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          {/* Ruta protegida solo para administradores */}
+          <Route path="/gracias/:pedidoId" element={<ThankYou />} />
           <Route
             path="/admin/productos"
             element={

@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchProducts } from "../store/productsSlice";
 import { ProductItem } from "./ProductItem";
 import { ProductSkeleton } from "./ProductSkeleton";
+import { CategoryFilter } from './CategoryFilter';
 
 export const ProductList = () => {
   const dispatch = useDispatch();

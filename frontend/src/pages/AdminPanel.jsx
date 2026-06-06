@@ -10,20 +10,32 @@ import {
   clearError,
 } from '../store/adminProductsSlice';
 import { Modal, Button, Form, Alert, Spinner } from 'react-bootstrap';
-import { FaEdit, FaTrash, FaPlus } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaPlus, FaSearch } from 'react-icons/fa';
 import axios from 'axios';
+import { toast } from 'react-toastify';
 
 const AdminPanel = () => {
   const dispatch = useDispatch();
   const { products, loading, error, errorDetails, currentProduct } = useSelector((state) => state.adminProducts);
-  
+
+  // Estados locales para UI
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  
-  // Estados para manejar las categorías y la imagen
   const [categorias, setCategorias] = useState([]);
   const [imagenFile, setImagenFile] = useState(null);
+  const [previewImage, setPreviewImage] = useState(null);
 
+  // Estados para búsqueda, filtro y paginación
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterCategoria, setFilterCategoria] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [productsPerPage] = useState(10);
+
+  // Estados para modal de confirmación de eliminación
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [productToDelete, setProductToDelete] = useState(null);
+
+  // Formulario
   const [formData, setFormData] = useState({
     nombre: '',
     descripcion: '',
@@ -32,24 +44,24 @@ const AdminPanel = () => {
     id_categoria: '',
   });
 
+  // Cargar productos y categorías al montar
   useEffect(() => {
     dispatch(fetchAdminProducts());
-    
-    
     const fetchCategorias = async () => {
       try {
         const res = await axios.get('http://localhost:3000/api/categorias');
         if (res.data && res.data.success) {
-          setCategorias(res.data.data); 
+          setCategorias(res.data.data);
         }
       } catch (error) {
-        console.error("Error al cargar las categorías desde el servidor:", error);
-        setCategorias([]); 
+        console.error('Error al cargar las categorías:', error);
+        setCategorias([]);
       }
     };
     fetchCategorias();
   }, [dispatch]);
 
+  // Manejar edición (cuando se selecciona un producto)
   useEffect(() => {
     if (currentProduct) {
       setFormData({
@@ -59,6 +71,7 @@ const AdminPanel = () => {
         stock: currentProduct.stock,
         id_categoria: currentProduct.id_categoria,
       });
+      setPreviewImage(currentProduct.imagen_url ? `http://localhost:3000${currentProduct.imagen_url}` : null);
       setIsEditing(true);
       setShowModal(true);
     } else {
@@ -71,8 +84,28 @@ const AdminPanel = () => {
         id_categoria: '',
       });
       setImagenFile(null);
+      setPreviewImage(null);
     }
   }, [currentProduct]);
+
+  // Filtrar productos localmente
+  const filteredProducts = products.filter((prod) => {
+    const matchesSearch = prod.nombre.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategoria =
+      filterCategoria === '' || prod.id_categoria === parseInt(filterCategoria);
+    return matchesSearch && matchesCategoria;
+  });
+
+  // Paginación
+  const indexOfLastProduct = currentPage * productsPerPage;
+  const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
+  const currentProducts = filteredProducts.slice(indexOfFirstProduct, indexOfLastProduct);
+  const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
+
+  // Resetear página al cambiar filtros
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterCategoria]);
 
   const handleOpenCreate = () => {
     dispatch(clearCurrentProduct());
@@ -81,7 +114,8 @@ const AdminPanel = () => {
 
   const handleCloseModal = () => {
     setShowModal(false);
-    setImagenFile(null); // Limpiar archivo seleccionado
+    setImagenFile(null);
+    setPreviewImage(null);
     dispatch(clearCurrentProduct());
     dispatch(clearError());
   };
@@ -91,117 +125,216 @@ const AdminPanel = () => {
   };
 
   const handleFileChange = (e) => {
-    setImagenFile(e.target.files[0]);
+    const file = e.target.files[0];
+    setImagenFile(file);
+    if (file) {
+      setPreviewImage(URL.createObjectURL(file));
+    } else {
+      setPreviewImage(null);
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Construir FormData para poder enviar archivos e información de texto juntos
     const data = new FormData();
     data.append('nombre', formData.nombre);
     data.append('descripcion', formData.descripcion);
     data.append('precio', formData.precio);
     data.append('stock', formData.stock);
     data.append('id_categoria', formData.id_categoria);
-    
-    // Solo agregamos la imagen si el usuario seleccionó un archivo
-    if (imagenFile) {
-      data.append('imagen', imagenFile); 
+    if (imagenFile) data.append('imagen', imagenFile);
+
+    let result;
+    if (isEditing) {
+      result = await dispatch(
+        updateProduct({ id: currentProduct.id_producto, productData: data })
+      );
+    } else {
+      result = await dispatch(createProduct(data));
     }
 
-    if (isEditing) {
-      await dispatch(updateProduct({ id: currentProduct.id_producto, productData: data }));
+    if (result.meta.requestStatus === 'fulfilled') {
+      toast.success(isEditing ? 'Producto actualizado' : 'Producto creado');
+      handleCloseModal();
+      dispatch(fetchAdminProducts());
     } else {
-      await dispatch(createProduct(data));
+      // El error ya se maneja en el slice, pero mostramos toast adicional si querés
+      toast.error('Error al guardar el producto');
     }
-    
-    handleCloseModal();
-    dispatch(fetchAdminProducts()); 
   };
 
-  const handleDelete = (id) => {
-    if (window.confirm('¿Estás seguro de eliminar este producto?')) {
-      dispatch(deleteProduct(id)).then(() => {
-        dispatch(fetchAdminProducts());
-      });
+  const handleDeleteClick = (product) => {
+    setProductToDelete(product);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (productToDelete) {
+      await dispatch(deleteProduct(productToDelete.id_producto));
+      dispatch(fetchAdminProducts());
+      setShowDeleteModal(false);
+      setProductToDelete(null);
+      toast.success('Producto eliminado correctamente');
     }
   };
 
   return (
     <div className="container py-5">
-      <div className="d-flex justify-content-between align-items-center mb-4">
+      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <h2 className="text-white">Panel de Administración - Productos</h2>
         <Button variant="primary" onClick={handleOpenCreate}>
           <FaPlus className="me-2" /> Nuevo Producto
         </Button>
       </div>
 
+      {/* Barra de búsqueda y filtro */}
+      <div className="row mb-4 g-3">
+        <div className="col-md-6">
+          <div className="input-group">
+            <span className="input-group-text bg-dark text-white border-secondary">
+              <FaSearch />
+            </span>
+            <input
+              type="text"
+              className="form-control bg-dark text-white border-secondary"
+              placeholder="Buscar por nombre..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        </div>
+        <div className="col-md-6">
+          <select
+            className="form-select bg-dark text-white border-secondary"
+            value={filterCategoria}
+            onChange={(e) => setFilterCategoria(e.target.value)}
+          >
+            <option value="">Todas las categorías</option>
+            {categorias.map((cat) => (
+              <option key={cat.id_categoria} value={cat.id_categoria}>
+                {cat.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Errores generales */}
       {error && (
         <Alert variant="danger" onClose={() => dispatch(clearError())} dismissible>
           <strong>{error}</strong>
           {errorDetails && errorDetails.length > 0 && (
             <ul className="mb-0 mt-2">
-              {errorDetails.map((err, idx) => <li key={idx}>{err}</li>)}
+              {errorDetails.map((err, idx) => (
+                <li key={idx}>{err}</li>
+              ))}
             </ul>
           )}
         </Alert>
       )}
 
+      {/* Tabla de productos */}
       {loading ? (
         <div className="text-center py-5">
           <Spinner animation="border" variant="primary" />
           <p className="mt-2 text-secondary">Cargando productos...</p>
         </div>
       ) : (
-        <div className="table-responsive">
-          <table className="table table-dark table-hover align-middle">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Foto</th>
-                <th>Nombre</th>
-                <th>Precio</th>
-                <th>Stock</th>
-                <th>Categoría</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.map((prod) => (
-                <tr key={prod.id_producto}>
-                  <td>{prod.id_producto}</td>
-                  <td>
-                    {prod.imagen_url ? (
-                      <img 
-                        src={`http://localhost:3000${prod.imagen_url}`} 
-                        alt={prod.nombre} 
-                        style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }} 
-                      />
-                    ) : (
-                      <span className="text-muted small">Sin imagen</span>
-                    )}
-                  </td>
-                  <td>{prod.nombre}</td>
-                  <td>${prod.precio}</td>
-                  <td>{prod.stock}</td>
-                  <td>{prod.Categorium?.nombre || prod.id_categoria}</td>
-                  <td>
-                    <Button variant="warning" size="sm" className="me-2" onClick={() => dispatch(setCurrentProduct(prod))}>
-                      <FaEdit />
-                    </Button>
-                    <Button variant="danger" size="sm" onClick={() => handleDelete(prod.id_producto)}>
-                      <FaTrash />
-                    </Button>
-                  </td>
+        <>
+          <div className="table-responsive">
+            <table className="table table-dark table-hover align-middle">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Foto</th>
+                  <th>Nombre</th>
+                  <th>Precio</th>
+                  <th>Stock</th>
+                  <th>Categoría</th>
+                  <th>Acciones</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {currentProducts.map((prod) => (
+                  <tr key={prod.id_producto}>
+                    <td>{prod.id_producto}</td>
+                    <td>
+                      {prod.imagen_url ? (
+                        <img
+                          src={`http://localhost:3000${prod.imagen_url}`}
+                          alt={prod.nombre}
+                          style={{
+                            width: '40px',
+                            height: '40px',
+                            objectFit: 'cover',
+                            borderRadius: '4px',
+                          }}
+                        />
+                      ) : (
+                        <span className="text-muted small">Sin imagen</span>
+                      )}
+                    </td>
+                    <td>{prod.nombre}</td>
+                    <td>${prod.precio}</td>
+                    <td>{prod.stock}</td>
+                    <td>{prod.Categorium?.nombre || prod.id_categoria}</td>
+                    <td>
+                      <Button
+                        variant="warning"
+                        size="sm"
+                        className="me-2"
+                        onClick={() => dispatch(setCurrentProduct(prod))}
+                      >
+                        <FaEdit />
+                      </Button>
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={() => handleDeleteClick(prod)}
+                      >
+                        <FaTrash />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Paginación */}
+          {totalPages > 1 && (
+            <div className="d-flex justify-content-center mt-4">
+              <nav>
+                <ul className="pagination">
+                  <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+                    <button
+                      className="page-link bg-dark text-white border-secondary"
+                      onClick={() => setCurrentPage((prev) => prev - 1)}
+                    >
+                      Anterior
+                    </button>
+                  </li>
+                  <li className="page-item disabled">
+                    <span className="page-link bg-dark text-white border-secondary">
+                      Página {currentPage} de {totalPages}
+                    </span>
+                  </li>
+                  <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+                    <button
+                      className="page-link bg-dark text-white border-secondary"
+                      onClick={() => setCurrentPage((prev) => prev + 1)}
+                    >
+                      Siguiente
+                    </button>
+                  </li>
+                </ul>
+              </nav>
+            </div>
+          )}
+        </>
       )}
 
-      {/* Modal de Creación / Edición */}
+      {/* Modal para crear/editar producto */}
       <Modal show={showModal} onHide={handleCloseModal} size="lg" centered>
         <Modal.Header closeButton className="bg-dark text-white border-secondary">
           <Modal.Title>{isEditing ? 'Editar Producto' : 'Nuevo Producto'}</Modal.Title>
@@ -219,7 +352,7 @@ const AdminPanel = () => {
                 className="bg-dark text-white border-secondary"
               />
             </Form.Group>
-            
+
             <Form.Group className="mb-3">
               <Form.Label>Descripción</Form.Label>
               <Form.Control
@@ -231,7 +364,7 @@ const AdminPanel = () => {
                 className="bg-dark text-white border-secondary"
               />
             </Form.Group>
-            
+
             <div className="row">
               <div className="col-md-6">
                 <Form.Group className="mb-3">
@@ -280,18 +413,14 @@ const AdminPanel = () => {
               </Form.Select>
             </Form.Group>
 
-            {/* Previsualización de la imagen al editar */}
-            {isEditing && currentProduct?.imagen_url && (
-              <div className="mb-3 p-3 bg-secondary bg-opacity-25 rounded text-center border border-secondary">
-                <Form.Label className="d-block text-white mb-2">Imagen Actual:</Form.Label>
-                <img 
-                  src={`http://localhost:3000${currentProduct.imagen_url}`} 
-                  alt="Actual" 
-                  style={{ width: '150px', height: '150px', objectFit: 'cover', borderRadius: '8px', border: '2px solid #555' }} 
+            {/* Vista previa de imagen */}
+            {previewImage && (
+              <div className="mb-3 text-center">
+                <img
+                  src={previewImage}
+                  alt="Vista previa"
+                  style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '8px' }}
                 />
-                <small className="d-block text-muted mt-2">
-                  (Si no subís una nueva foto, se mantendrá esta)
-                </small>
               </div>
             )}
 
@@ -305,15 +434,34 @@ const AdminPanel = () => {
                 className="bg-dark text-white border-secondary"
               />
             </Form.Group>
-
           </Modal.Body>
           <Modal.Footer className="border-secondary">
-            <Button variant="secondary" onClick={handleCloseModal}>Cancelar</Button>
+            <Button variant="secondary" onClick={handleCloseModal}>
+              Cancelar
+            </Button>
             <Button variant="primary" type="submit">
               {isEditing ? 'Guardar Cambios' : 'Crear Producto'}
             </Button>
           </Modal.Footer>
         </Form>
+      </Modal>
+
+      {/* Modal de confirmación para eliminar */}
+      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered>
+        <Modal.Header closeButton className="bg-dark text-white border-secondary">
+          <Modal.Title>Confirmar eliminación</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="bg-dark text-white">
+          ¿Estás seguro de eliminar <strong>{productToDelete?.nombre}</strong>? Esta acción no se puede deshacer.
+        </Modal.Body>
+        <Modal.Footer className="bg-dark border-secondary">
+          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
+            Cancelar
+          </Button>
+          <Button variant="danger" onClick={confirmDelete}>
+            Eliminar
+          </Button>
+        </Modal.Footer>
       </Modal>
     </div>
   );
