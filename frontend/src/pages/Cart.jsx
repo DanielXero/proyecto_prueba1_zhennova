@@ -115,7 +115,7 @@ const Cart = () => {
 
   return (
     <div className="container py-5">
-      <h2 className="mb-4 fw-bold">🛒 Tu Carrito</h2>
+      <h2 className="mb-4 fw-bold text-white">🛒 Tu Carrito</h2>
       {items.length === 0 ? (
         <div className="alert alert-info text-center">
           El carrito está vacío. <a href="/productos">Seguir comprando</a>
@@ -135,19 +135,19 @@ const Cart = () => {
                       className="rounded bg-dark"
                     />
                     <div className="flex-grow-1" style={{ minWidth: '150px' }}>
-                      <h6 className="mb-1">{item.Producto?.nombre}</h6>
+                      <h6 className="mb-1 text-white">{item.Producto?.nombre}</h6>
                       <small className="text-secondary">Precio unit: ${Number(item.Producto?.precio).toLocaleString()}</small>
-                      <div className="text-warning small">Stock disponible: {item.Producto?.stock}</div>
+                      <div className="text-warning small ">Stock disponible: {item.Producto?.stock}</div>
                     </div>
                     <div className="d-flex align-items-center gap-2">
                       <button
-                        className="btn btn-sm btn-outline-secondary"
+                        className="btn btn-sm btn-outline-secondary "
                         onClick={() => handleQuantityChange(item, item.cantidad - 1)}
                         disabled={item.cantidad <= 1 || loadingItems[item.id_producto]}
                       >
                         -
                       </button>
-                      <span className="fw-bold" style={{ width: '40px', textAlign: 'center' }}>{item.cantidad}</span>
+                      <span className="fw-bold text-white" style={{ width: '40px', textAlign: 'center' }}>{item.cantidad}</span>
                       <button
                         className="btn btn-sm btn-outline-secondary"
                         onClick={() => handleQuantityChange(item, item.cantidad + 1)}
@@ -170,18 +170,18 @@ const Cart = () => {
           <div className="col-lg-4">
             <div className="card bg-dark border-secondary sticky-top" style={{ top: '20px' }}>
               <div className="card-body">
-                <h5 className="card-title fw-bold">Resumen de pago</h5>
+                <h5 className="card-title fw-bold text-white">Resumen de pago</h5>
                 <hr className="border-secondary" />
-                <div className="d-flex justify-content-between mb-2">
+                <div className="d-flex justify-content-between mb-2 text-white">
                   <span>Subtotal</span><span>${subtotal.toLocaleString()}</span>
                 </div>
                 {descuentoRecargo > 0 && (
-                  <div className="d-flex justify-content-between mb-2 text-info small">
+                  <div className="d-flex justify-content-between mb-2 text-info small text-white">
                     <span>{formaPago === 1 ? 'Descuento efectivo (-10%)' : 'Recargo tarjeta (+15%)'}</span>
                     <span>{formaPago === 1 ? `-$${descuentoRecargo.toLocaleString()}` : `+$${descuentoRecargo.toLocaleString()}`}</span>
                   </div>
                 )}
-                <div className="d-flex justify-content-between mb-3 fw-bold fs-5">
+                <div className="d-flex justify-content-between mb-3 fw-bold fs-5 text-white">
                   <span>Total</span><span className="text-cyan">${total.toLocaleString()}</span>
                 </div>
                 <label className="form-label">Método de pago</label>

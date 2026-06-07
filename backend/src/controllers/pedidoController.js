@@ -1,4 +1,4 @@
-const { Pedido, DetallePedido, Producto, UsuarioProducto } = require('../models/associations');
+const { Pedido, DetallePedido, Producto, UsuarioProducto, FormaPago } = require('../models/associations');
 const { sequelize } = require('../config/database');
 const { PagoEfectivo, PagoTarjeta, PagoTransferencia } = require('../strategies/pagoStrategy');
 

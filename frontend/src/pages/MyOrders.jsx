@@ -26,7 +26,7 @@ const MyOrders = () => {
 
   return (
     <div className="container py-5">
-      <h2 className="mb-4">📋 Mis Pedidos</h2>
+      <h2 className="mb-4 text-white">📋 Mis Pedidos</h2>
       {pedidos.length === 0 ? (
         <div className="alert alert-info">
           No realizaste ninguna compra aún. <Link to="/productos">Ir a la tienda</Link>
